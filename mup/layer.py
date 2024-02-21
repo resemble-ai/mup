@@ -1,4 +1,6 @@
 # Copyright 2022 Microsoft Corporation.
+# Copyright 2022 Resemble AI.
+import torch
 from torch.nn import Linear
 
 
@@ -15,7 +17,7 @@ class MuReadout(Linear):
         self.output_mult = output_mult
         self.readout_zero_init = readout_zero_init
         super().__init__(*args, **kwargs)
-    
+
     def reset_parameters(self) -> None:
         if self.readout_zero_init:
             self.weight.data[:] = 0
@@ -50,7 +52,7 @@ class MuReadout(Linear):
             self.bias.data *= self.width_mult()**0.5
         self.weight.data *= self.width_mult()**0.5
         self._has_rescaled_params = True
-                    
+
     def forward(self, x):
         return super().forward(
             self.output_mult * x / self.width_mult())
@@ -58,7 +60,7 @@ class MuReadout(Linear):
 
 class MuSharedReadout(MuReadout):
     '''`MuReadout` with weights shared with an `nn.Embedding` layer.
-    
+
     Inputs:
         weight: should be weight of an `nn.Embedding` layer
         other inputs are fed to `MuReadout`
@@ -79,6 +81,11 @@ def rescale_linear_bias(linear):
         "To bypass this error and *still rescale biases*, set `linear._has_rescaled_params=False` before this call.")
     if linear.bias is None:
         return
-    fanin_mult = linear.weight.infshape[1].width_mult()
+    if isinstance(linear.weight, torch.nn.parameter.Parameter):
+        fanin_mult = linear.weight.infshape[1].width_mult()
+    elif hasattr(linear, "weight_v"):
+        fanin_mult = linear.weight_v.infshape[1].width_mult()
+    else:
+        raise ValueError("[jrm] Unexpected type of parameter")
     linear.bias.data *= fanin_mult**0.5
     linear._has_rescaled_params = True
