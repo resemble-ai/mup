@@ -79,10 +79,36 @@ class MuConv1dOut(Conv1d):
     This layer implements the version of μP with a 1/width multiplier and a
     constant variance initialization for both weights and biases.
     '''
-    def __init__(self, *args, readout_zero_init=False, output_mult=1.0, **kwargs):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size,
+        *args,
+        readout_zero_init=False,
+        output_mult=1.0,
+        **kwargs
+    ):
         self.output_mult = output_mult
         self.readout_zero_init = readout_zero_init
-        super().__init__(*args, **kwargs)
+        super().__init__(in_channels, out_channels, kernel_size, *args, **kwargs)
+
+    def reset_parameters(self) -> None:
+        if self.readout_zero_init:
+            self.weight.data[:] = 0
+            if self.bias is not None:
+                self.bias.data[:] = 0
+        else:
+            super().reset_parameters()
+
+    def width_mult(self):
+        assert hasattr(self.weight, 'infshape'), (
+            'Please call set_base_shapes(...). If using torch.nn.DataParallel, '
+            'switch to distributed training with '
+            'torch.nn.parallel.DistributedDataParallel instead'
+        )
+        return self.weight.infshape.width_mult()
+
 
     def _rescale_parameters(self):
         '''Rescale parameters to convert SP initialization to μP initialization.
@@ -118,10 +144,35 @@ class MuConv2dOut(Conv2d):
     This layer implements the version of μP with a 1/width multiplier and a
     constant variance initialization for both weights and biases.
     '''
-    def __init__(self, *args, readout_zero_init=False, output_mult=1.0, **kwargs):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size,
+        *args,
+        readout_zero_init=False,
+        output_mult=1.0,
+        **kwargs
+    ):
         self.output_mult = output_mult
         self.readout_zero_init = readout_zero_init
-        super().__init__(*args, **kwargs)
+        super().__init__(in_channels, out_channels, kernel_size, *args, **kwargs)
+
+    def reset_parameters(self) -> None:
+        if self.readout_zero_init:
+            self.weight.data[:] = 0
+            if self.bias is not None:
+                self.bias.data[:] = 0
+        else:
+            super().reset_parameters()
+
+    def width_mult(self):
+        assert hasattr(self.weight, 'infshape'), (
+            'Please call set_base_shapes(...). If using torch.nn.DataParallel, '
+            'switch to distributed training with '
+            'torch.nn.parallel.DistributedDataParallel instead'
+        )
+        return self.weight.infshape.width_mult()
 
     def _rescale_parameters(self):
         '''Rescale parameters to convert SP initialization to μP initialization.
