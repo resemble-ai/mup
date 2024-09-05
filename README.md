@@ -1,4 +1,7 @@
-# Maximal Update Parametrization (μP) and Hyperparameter Transfer (μTransfer) 
+# NOTE:
+- muP is incompatible with `weight_norm`; changes made in 1.0.1 only prevents certain errors.
+
+# Maximal Update Parametrization (μP) and Hyperparameter Transfer (μTransfer)
 
 [Paper link](https://arxiv.org/abs/2203.03466)
 |
@@ -11,7 +14,7 @@ This can be used to tune extremely large neural networks such as large pretraine
 More generally, μP reduces the fragility and uncertainty when transitioning from exploration to scaling up, which are not often talked about explicitly in the deep learning literature.
 
 ![](figures/sp_vs_mup_dashed.png)
-<font size="1"> *Figure above: Training loss against learning rate on Transformers of varying `d_model` trained with Adam.*</font> 
+<font size="1"> *Figure above: Training loss against learning rate on Transformers of varying `d_model` trained with Adam.*</font>
 
 
 μP turns out to be the *unique* "natural" parametrization that has this hyperparameter stability property across width, as empirically verified in the gif below on MLPs trained with SGD. Here, across time, we interpolate between PyTorch default and μP's learning rate and initialization scalings (right), and we scale up the width-256 model (log2(width)=8) to width 2^13 = 8192 using this interpolated scaling rule (left).
@@ -88,7 +91,7 @@ base_model = MyModel(width=1)
 delta_model = MyModel(width=2) # Optionally use `torchdistx` to avoid instantiating
 
 ### Instantiate the target model (the model you actually want to train).
-### This should be the same as the base model except 
+### This should be the same as the base model except
 ###   the widths could be potentially different.
 ### In particular, base_model and model should have the same depth.
 model = MyModel(width=100)
@@ -107,7 +110,7 @@ set_base_shapes(model, base_model, delta=delta_model)
 # make_base_shapes(base_model, delta_model, filename)
 ### and later set base shapes directly from the filename
 # set_base_shapes(model, filename)
-### This is useful when one cannot fit both 
+### This is useful when one cannot fit both
 ###   base_model and model in memory at the same time
 
 ### Replace your custom init, if any
@@ -222,12 +225,12 @@ the following can shrink to 0 at initialization in μP (at a 1/sqrt(width) rate)
 
 These are transient, and after a few steps their curves should be roughly flat.
 Nevertheless, to remove the discrepancy at init, we recommend
-   - initializing the output layer 
+   - initializing the output layer
    (should be a `MuReadout` instance) weights to be 0 via
    the `readout_zero_init=True` option and
    - initializing the query matrix in a Transformer to 0
      (this has to be done manually). If symmetry-breaking is desired in the attention logits at init, initialize the (relative) position biases with nonzero variance.
-     
+
 #### Tips for Coord Check
 
 - Use a large learning rate (larger than you'd use for actual training). This would emphasize any potential exploding coordinates issue, which could be hidden by the initialization if the learning rate is too small.
@@ -298,8 +301,8 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
+trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.

@@ -3,11 +3,17 @@ from copy import deepcopy
 
 import yaml
 from torch import nn
-from torch.nn import Linear
+from torch.nn import Linear, Conv1d, Conv2d
 from torch.nn.modules.conv import _ConvNd
 
 from mup.infshape import InfShape, zip_infshape
-from mup.layer import MuReadout, rescale_linear_bias
+from mup.layer import (
+    MuReadout,
+    MuConv1dOut,
+    MuConv2dOut,
+    rescale_linear_bias
+)
+
 
 __BSH_COMMENT__ = '''\
 # This is a base shape file encoded in yaml
@@ -36,7 +42,7 @@ def save_base_shapes(model_or_shapes, file):
     s = __BSH_COMMENT__ + s
     with open(file, 'w') as f:
         f.write(s)
-    
+
 def load_base_shapes(filename):
     '''Get a dict of `InfShape` from a filename.'''
     with open(filename, 'r') as f:
@@ -156,6 +162,7 @@ def apply_infshapes(model, infshapes):
     for name, p in model.named_parameters():
         p.infshape = infshapes[name]
 
+
 def set_base_shapes(model, base, rescale_params=True, delta=None, savefile=None, do_assert=True):
     '''Sets the `p.infshape` attribute for each parameter `p` of `model`.
 
@@ -169,7 +176,7 @@ def set_base_shapes(model, base, rescale_params=True, delta=None, savefile=None,
             assuming the model is initialized using the default pytorch init (or
             He initialization etc that scale the same way with fanin): If True
             (default), rescales parameters to have the correct (μP) variances.
-        do_assert: 
+        do_assert:
     Output:
         same object as `model`, after setting the `infshape` attribute of each parameter.
     '''
@@ -194,6 +201,7 @@ def set_base_shapes(model, base, rescale_params=True, delta=None, savefile=None,
                 rescale_linear_bias(module)
     return model
 
+
 def assert_hidden_size_inf(model):
     '''
     This tests for any `nn.Linear` whose output dimension is finite but input
@@ -207,3 +215,16 @@ def assert_hidden_size_inf(model):
                     f'{name} has infinite fan-in and finite fan-out dimensions but is not type `MuReadout`. '
                     'To resolve this, either change the module to `MuReadout` or change the fan-out to an infinite dimension.'
                 )
+        elif isinstance(module, Conv1d) and not isinstance(module, MuConv1dOut):
+            if not module.weight.infshape[0].isinf() and module.weight.infshape[1].isinf():
+                assert False, (
+                    f'{name} has infinite fan-in and finite fan-out dimensions but is not type `MuConv1dOut`. '
+                    'To resolve this, either change the module to `MuConv1dOut` or change the fan-out to an infinite dimension.'
+                )
+        elif isinstance(module, Conv2d) and not isinstance(module, MuConv2dOut):
+            if not module.weight.infshape[0].isinf() and module.weight.infshape[1].isinf():
+                assert False, (
+                    f'{name} has infinite fan-in and finite fan-out dimensions but is not type `MuConv1dOut`. '
+                    'To resolve this, either change the module to `MuConv1dOut` or change the fan-out to an infinite dimension.'
+                )
+
